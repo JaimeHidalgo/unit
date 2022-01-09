@@ -370,11 +370,11 @@ export default function webRender(
   }
 
   const SpeechSynthesis = (opt: ISpeechSynthesisOpt): ISpeechSynthesis => {
-    if (!window.SpeechSynthesis) {
+    if (!window.speechSynthesis) {
       throw new APINotSupportedError('Speech Synthesis')
     }
 
-    const speechSynthesis = new window.SpeechSynthesis()
+    const { speechSynthesis } = window
 
     return {
       getVoices: () => {
