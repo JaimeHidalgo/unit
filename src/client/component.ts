@@ -532,15 +532,13 @@ export class Component<
 
     let p = []
 
-    for (const subComponentId in this.$subComponent) {
-      const subComponent = this.$subComponent[subComponentId]
-      if (this.$root.indexOf(subComponent) > -1) {
-        const subComponentPrim = subComponent.getRootBase([
-          ...path,
-          subComponentId,
-        ])
-        p = [...p, ...subComponentPrim]
-      }
+    for (const subComponent of this.$root) {
+      const subComponentId = this.getSubComponentId(subComponent)
+      const subComponentPrim = subComponent.getRootBase([
+        ...path,
+        subComponentId,
+      ])
+      p = [...p, ...subComponentPrim]
     }
 
     return p
@@ -553,13 +551,22 @@ export class Component<
 
     let p = []
 
-    for (const subComponentId in this.$subComponent) {
-      const subComponent = this.$subComponent[subComponentId]
-      const subComponentPrim = subComponent.getRootBase([
+    const appendSubComponent = (subComponent: Component) => {
+      const subComponentId = this.getSubComponentId(subComponent)
+      const subComponentRootBase = subComponent.getRootBase([
         ...path,
         subComponentId,
       ])
-      p = [...p, ...subComponentPrim]
+
+      p = [...p, ...subComponentRootBase]
+
+      for (const _subComponent of subComponent.$parentRoot) {
+        appendSubComponent(_subComponent)
+      }
+    }
+
+    for (const subComponent of this.$root) {
+      appendSubComponent(subComponent)
     }
 
     return p
@@ -839,7 +846,8 @@ export class Component<
   }
 
   public _disconnect(): void {
-    console.log(this.constructor.name, 'disconnect')
+    // console.log(this.constructor.name, 'disconnect')
+    
     if (!this.$connected) {
       // throw new Error ('Component is not already disconnected')
       console.log('Component', 'disconnect called unnecessarily')
@@ -1093,6 +1101,7 @@ export class Component<
     for (const component of this.$parentRoot) {
       const slotName = this.$parentRootSlot[i]
       this.appendParentRoot(component, slotName)
+      component.collapse()
       i++
     }
   }
@@ -1100,6 +1109,8 @@ export class Component<
   public uncollapse(): void {
     for (const component of this.$parentRoot) {
       this.removeParentRoot(component)
+
+      component.uncollapse()
     }
   }
 
@@ -1365,6 +1376,17 @@ export class Component<
     }
 
     return null
+  }
+
+  public getParentChildSlotId(subComponent: Component): string {
+    const i = this.$parentRoot.indexOf(subComponent)
+
+    if (i > -1) {
+      const slotName = this.$parentRootSlot[i]
+      return slotName
+    } else {
+      throw new Error('Parent Child Not Found')
+    }
   }
 
   public addEventListener = (listener: Listener): Unlisten => {

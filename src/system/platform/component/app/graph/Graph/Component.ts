@@ -12268,6 +12268,19 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
     return sub_component_root_base
   }
 
+  private _get_component_sub_component_root_base = (
+    sub_component_id: string
+  ): LayoutBase => {
+    const base = this._get_sub_component_root_base(sub_component_id)
+
+    const _base = base.map(([path, comp]) => [
+      [sub_component_id, ...path],
+      comp,
+    ]) as LayoutBase
+
+    return _base
+  }
+
   private _get_sub_component_base = (sub_component_id: string): LayoutBase => {
     const sub_component = this._get_sub_component(sub_component_id)
     const sub_component_root_base = sub_component.getBase()
@@ -13399,8 +13412,9 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
       height: `${height}px`,
       transform: `scale(${k})`,
       // border: `1px solid ${randomColorString()}`,
+      // border: `1px solid ${COLOR_NONE}`,
       // boxSizing: 'border-box',
-      zIndex: '1001',
+      // zIndex: '1001',
       fontSize: `${fontSize}px`,
     }
 
@@ -13528,16 +13542,6 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
             leaf_parent.removeRoot(leaf_comp)
           }
         }
-        // if (leaf_parent.$mountRoot.includes(leaf_comp)) {
-        //   leaf_parent.removeRoot(leaf_comp)
-
-        //   const mountParentRoot = [...leaf_comp.$mountParentRoot]
-        //   for (const parentRoot of mountParentRoot) {
-        //     leaf_comp.removeParentRoot(parentRoot)
-        //   }
-        // } else {
-        //   //
-        // }
       }
     }
   }
@@ -17151,6 +17155,14 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
     //   sub_scale
     // )
 
+    // console.log(
+    //   'Graph',
+    //   '_animate_sub_component_graph_leave',
+    //   base,
+    //   base_node,
+    //   sub_scale
+    // )
+
     const base_layer = this._foreground
 
     let i = 0
@@ -19087,8 +19099,6 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
           all_sub_component_base_trait ||
           this._get_all_sub_component_base_trait()
 
-        console.log('AHHA', all_sub_component_base_trait)
-
         for (const sub_component_id in this._component.$subComponent) {
           if (this._animating_sub_component_base_id.has(sub_component_id)) {
             this._unplug_sub_component_root_base_frame(sub_component_id)
@@ -19958,7 +19968,7 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
     callback: Callback<string>,
     end: Callback
   ): Unlisten => {
-    console.log('Graph', '_animate_leave_fullwindow', sub_component_ids)
+    // console.log('Graph', '_animate_leave_fullwindow', sub_component_ids)
 
     const all_unlisten = []
 
@@ -19968,114 +19978,163 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
 
     let sub_component_end_leaf_count = 0
 
-    let all_base = []
+    const all_parent_id: Dict<string> = {}
+    const all_parent_children: Dict<string[]> = {}
 
-    for (const sub_component_id of sub_component_ids) {
-      const base = this._get_sub_component_root_base(sub_component_id)
-
-      if (this._tree_layout) {
-        const parent_id =
-          this._get_sub_component_spec_parent_id(sub_component_id)
-
-        if (parent_id) {
-          const parent_component = this._get_sub_component(parent_id)
-          const slot_name = this._get_sub_component_slot_name(sub_component_id)
-          const slot = parent_component.$slot[slot_name]
-        } else {
-          //
-        }
-      } else {
-        //
-      }
-
-      all_base = [...all_base, ...base]
-    }
-
-    const fontSize = this.getFontSize() // TODO
-
-    const { k } = this._zoom
-
-    const all_parent_base: Dict<string[]> = {}
+    const all_parent_base: Dict<Dict<LayoutBase>> = {}
+    const all_root_base: Dict<LayoutBase> = {}
 
     for (const sub_component_id of sub_component_ids) {
       const parent_id = this._get_sub_component_spec_parent_id(sub_component_id)
-      const parent_component = this._get_sub_component(sub_component_id)
+      const base = this._get_component_sub_component_root_base(sub_component_id)
 
-      let slot_id = parent_id
+      if (this._tree_layout) {
+        const parent_visible =
+          this._is_layout_component_layer_visible(parent_id)
 
-      const base = this._get_sub_component_root_base(sub_component_id)
+        if (parent_id && !parent_visible) {
+          if (parent_visible) {
+            all_root_base[sub_component_id] =
+              all_root_base[sub_component_id] || []
+            all_root_base[sub_component_id] = [
+              ...all_root_base[sub_component_id],
+              ...base,
+            ]
+          } else {
+            const slot_name =
+              this._get_sub_component_slot_name(sub_component_id)
 
-      for (const leaf of base) {
-        const [leaf_path, leaf_comp] = leaf
+            all_parent_base[parent_id] = all_parent_base[parent_id] || {}
+            all_parent_base[parent_id][slot_name] =
+              all_parent_base[parent_id][slot_name] || []
+            all_parent_base[parent_id][slot_name] = [
+              ...all_parent_base[parent_id][slot_name],
+              ...base,
+            ]
+            all_parent_id[sub_component_id] = parent_id
 
-        const leaf_id = getLeafId(leaf_path)
+            all_parent_children[parent_id] =
+              all_parent_children[parent_id] || []
+            all_parent_children[parent_id].push(sub_component_id)
+          }
+        } else {
+          all_root_base[sub_component_id] =
+            all_root_base[sub_component_id] || []
+          all_root_base[sub_component_id] = [
+            ...all_root_base[sub_component_id],
+            ...base,
+          ]
+        }
+      } else {
+        all_root_base[sub_component_id] = all_root_base[sub_component_id] || []
+        all_root_base[sub_component_id] = [
+          ...all_root_base[sub_component_id],
+          ...base,
+        ]
       }
+    }
 
-      if (parent_id) {
-        const parent_component = this._get_sub_component(sub_component_id)
+    const all_trait: Dict<LayoutNode> = {}
 
-        const slot_name = this._get_sub_component_slot_name(sub_component_id)
+    const reset_all_trait = () => {
+      for (const sub_component_id in all_root_base) {
+        const base = all_root_base[sub_component_id]
 
-        const slot_sub_component_id =
-          parent_component.getSlotSubComponentId(slot_name)
+        const frame = this._get_sub_component_frame(sub_component_id)
 
-        const parent_leaf_id = parent_id
+        const context = this._get_sub_component_frame_context(sub_component_id)
 
-        console.log('parent_leaf_id', parent_id)
+        const parent_style = extractStyle(frame)
+        const parent_trait = extractTrait(frame)
 
-        for (const leaf of base) {
-          const [leaf_path, leaf_comp] = leaf
+        const children = base.map(([_, leaf_comp]) => leaf_comp)
+
+        const children_style = children.map((c) => extractStyle(c))
+
+        const parent_base_trait = reflectChildrenTrait(
+          parent_trait,
+          parent_style,
+          children_style
+        )
+
+        let i = 0
+
+        for (const [leaf_path] of base) {
+          const leaf_trait = parent_base_trait[i]
+
+          const _leaf_trait: LayoutNode = {
+            x: context.$x + leaf_trait.x,
+            y: context.$y + leaf_trait.y,
+            width: leaf_trait.width,
+            height: leaf_trait.height,
+            k: leaf_trait.k,
+            opacity: leaf_trait.opacity,
+            fontSize: leaf_trait.fontSize,
+          }
 
           const leaf_id = getLeafId(leaf_path)
+
+          all_trait[leaf_id] = _leaf_trait
+
+          i++
         }
-      } else {
+      }
+
+      for (const parent_id in all_parent_base) {
+        const sub_component = this._get_sub_component(parent_id)
+
+        const parent_base = all_parent_base[parent_id] || {}
+
+        for (const slot_name in parent_base) {
+          const parent_slot_base = parent_base[slot_name]
+
+          const slot_id = sub_component.getSlotSubComponentId(slot_name)
+
+          const slot_leaf_id = `${parent_id}/${slot_id}`
+
+          const slot = sub_component.getSlot(slot_name)
+
+          const slot_style = extractStyle(slot)
+
+          const slot_trait = all_trait[slot_leaf_id]
+
+          const children = parent_slot_base.map(([_, leaf_comp]) => leaf_comp)
+
+          const slot_base_style = children.map((c) => extractStyle(c))
+
+          const parent_base_trait = reflectChildrenTrait(
+            slot_trait,
+            slot_style,
+            slot_base_style
+          )
+
+          let i = 0
+
+          for (const [leaf_path] of parent_slot_base) {
+            const parent_leaf_trait = parent_base_trait[i]
+
+            const leaf_trait: LayoutNode = {
+              x: slot_trait.x + parent_leaf_trait.x,
+              y: slot_trait.y + parent_leaf_trait.y,
+              width: parent_leaf_trait.width,
+              height: parent_leaf_trait.height,
+              k: parent_leaf_trait.k,
+              opacity: parent_leaf_trait.opacity,
+              fontSize: parent_leaf_trait.fontSize,
+            }
+
+            const leaf_id = getLeafId(leaf_path)
+
+            all_trait[leaf_id] = leaf_trait
+
+            i++
+          }
+        }
       }
     }
 
     for (const sub_component_id of sub_component_ids) {
-      const sub_component = this._get_sub_component(sub_component_id)
-      const parent_id = this._get_sub_component_spec_parent_id(sub_component_id)
       const base = this._get_sub_component_root_base(sub_component_id)
-      const sub_component_frame =
-        this._get_sub_component_frame(sub_component_id)
-      const context = this._get_sub_component_frame_context(sub_component_id)
-
-      // const style = {}
-      // const trait = {
-      //   x: context.$x,
-      //   y: context.$y,
-      //   width: context.$width,
-      //   height: context.$height,
-      //   fontSize,
-      //   k,
-      //   opacity: 1,
-      // }
-
-      let slot: Component
-
-      if (this._tree_layout) {
-        if (parent_id) {
-          const parent_component = this._get_sub_component(parent_id)
-          const slot_name = (slot = this._get_sub_component_frame(parent_id))
-        } else {
-          slot = sub_component_frame
-        }
-      } else {
-        slot = sub_component_frame
-      }
-
-      const style = extractStyle(slot)
-      const trait = extractTrait(slot)
-
-      let all_trait = this.__reflect_sub_component_base_trait(
-        sub_component_id,
-        slot,
-        base,
-        style,
-        trait
-      )
-
-      console.log('all_trait', all_trait)
 
       const layer = this._get_foreground()
 
@@ -20095,28 +20154,14 @@ export class _GraphComponent extends Element<HTMLDivElement, _Props> {
         layer,
         (leaf_id: string) => {
           if (i === 0) {
-            all_trait = this.__reflect_sub_component_base_trait(
-              sub_component_id,
-              slot,
-              base,
-              style,
-              trait
-            )
+            reset_all_trait()
           }
 
           const _trait = all_trait[leaf_id]
 
           i = (i + 1) % leaf_total
 
-          return {
-            x: context.$x + _trait.x,
-            y: context.$y + _trait.y,
-            width: _trait.width,
-            height: _trait.height,
-            k: _trait.k,
-            opacity: _trait.opacity,
-            fontSize: _trait.fontSize,
-          }
+          return _trait
         },
         () => {
           callback(sub_component_id)
