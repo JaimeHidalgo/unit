@@ -5,6 +5,9 @@
   "repository": "git@github.com:samuelmtimbo/unit.git",
   "author": "Samuel Timbó <samuelmtimbo@gmail.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=16.13.1"
+  },
   "scripts": {
     "v": "ts-node src/script/v.ts",
     "dev:node": "NODE_ENV=development node",
